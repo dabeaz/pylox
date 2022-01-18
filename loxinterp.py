@@ -2,6 +2,7 @@
 #
 # Tree-walking interpreter
 
+from collections import ChainMap
 from loxast import NodeVisitor
 
 # Lox truthiness.  See pg. 101. 
@@ -24,14 +25,16 @@ def _check_numeric_operand(op, value):
         return True
     else:
         raise RuntimeError(f"{op} operand must be a number")
-    
+
 class LoxInterpreter(NodeVisitor):
     def __init__(self):
-        self.env = { }
+        self.env = ChainMap()
         
     def visit_Statements(self, node):
+        self.env = self.env.new_child()
         for stmt in node.statements:
             self.visit(stmt)
+        self.env = self.env.parents
 
     def visit_Literal(self, node):
         return node.value
@@ -66,8 +69,16 @@ class LoxInterpreter(NodeVisitor):
             _check_numeric_operands(node.op, left, right)            
             return left >= right
         else:
-            raise TypeError(f"Bad operator {node.op}")
+            raise NotImplementedError(f"Bad operator {node.op}")
 
+    def visit_Logical(self, node):
+        left = self.visit(node.left)
+        if node.op == 'or':
+            return left if _is_truthy(left) else self.visit(node.right)
+        if node.op == 'and':
+            return self.visit(node.right) if _is_truthy(left) else left
+        raise NotImplementedError(f"Bad operator {node.op}")
+        
     def visit_Unary(self, node):
         operand = self.visit(node.operand)
         if node.op == "-":
@@ -76,14 +87,14 @@ class LoxInterpreter(NodeVisitor):
         elif node.op == "!":
             return not _is_truthy(operand)
         else:
-            raise TypeError(f"Bad operator {node.op}")
+            raise NotImplementedError(f"Bad operator {node.op}")
 
     def visit_Grouping(self, node):
         return self.visit(node.value)
 
     def visit_Variable(self, node):
         if node.name in self.env:
-            return self.env[node.name]    # FIX for scopes
+            return self.env[node.name]
         else:
             raise RuntimeError(f'Variable {node.name} not defined')
     
@@ -101,13 +112,21 @@ class LoxInterpreter(NodeVisitor):
         self.env[node.name] = initializer
 
     def visit_Assign(self, node):
-        if node.name not in self.env:
+        for env in self.env.maps:
+            if node.name in env:
+                env[node.name] = self.visit(node.value)
+                break
+        else:
             raise RuntimeError(f'Variable {node.name} not declared')
-        self.env[node.name] = self.visit(node.value)     # FIX for scopes
         
     def visit_IfStmt(self, node):
         test = self.visit(node.test)
-        if test:
+        if _is_truthy(test):
             self.visit(node.consequence)
         elif node.alternative:
             self.visit(node.alternative)
+
+    def visit_WhileStmt(self, node):
+        while _is_truthy(self.visit(node.test)):
+            self.visit(node.body)
+            

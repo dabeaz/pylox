@@ -1,0 +1,49 @@
+// Draw a nice mandelbrot set!
+
+var xmin = -2.0;
+var xmax = 1.0;
+var ymin = -1.5;
+var ymax = 1.5;
+var width = 80.0;
+var height = 40.0;
+var threshhold = 1000;
+
+var dx  = (xmax - xmin)/width;
+var dy  = (ymax - ymin)/height;
+var y = ymax;
+var x;
+var _x;
+var _y;
+var xtemp;
+var n;
+var in_mandel;
+while (y >= ymin) {
+     x = xmin;
+     var line = "";
+     while (x < xmax) {
+         _x = 0.0;
+         _y = 0.0;
+         n = threshhold;
+         in_mandel = true;
+         while (n > 0) {
+             xtemp = _x*_x - _y*_y + x;
+             _y = 2.0*_x*_y + y;
+             _x = xtemp;
+             n = n - 1;
+             if ((_x*_x + _y*_y) > 4.0) {
+                 in_mandel = false;
+                 n = 0;
+             }
+         }               
+         if (in_mandel) {
+             line = line + "*";
+         } else {
+             line = line + ".";
+         }
+         x = x + dx;
+     }
+     print line;
+     y = y - dy;
+}
+
+

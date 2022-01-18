@@ -8,6 +8,8 @@ class LoxParser(Parser):
     tokens = LoxLexer.tokens
 
     precedence = (
+        ('left', OR),
+        ('left', AND),
         ('left', EQUAL_EQUAL, BANG_EQUAL),
         ('left', LESS, LESS_EQUAL, GREATER, GREATER_EQUAL),
         ('left', PLUS, MINUS),
@@ -15,9 +17,26 @@ class LoxParser(Parser):
         ('right', UNARY),
         )
 
-    @_('{ statement }')
-    def statements(self, p):
-        return Statements(p.statement)
+    @_('declarations')
+    def program(self, p):
+        return p.declarations
+
+
+    @_('{ declaration }')
+    def declarations(self, p):
+        return Statements(p.declaration)
+
+    @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
+    def declaration(self, p):
+        return VarDeclaration(p.IDENTIFIER, p.expression)
+    
+    @_('statement')
+    def declaration(self, p):
+        return p.statement
+
+    @_('LEFT_BRACE declarations RIGHT_BRACE')
+    def statement(self, p):
+        return p.declarations
     
     @_('expression SEMI')
     def statement(self, p):
@@ -27,17 +46,23 @@ class LoxParser(Parser):
     def statement(self, p):
         return Print(p.expression)
 
-    @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
-    def statement(self, p):
-        return VarDeclaration(p.IDENTIFIER, p.expression)
-
     @_('IDENTIFIER EQUAL expression SEMI')
     def statement(self, p):
         return Assign(p.IDENTIFIER, p.expression)
-    
-    @_('IF expression LEFT_BRACE statements RIGHT_BRACE [ ELSE LEFT_BRACE statements RIGHT_BRACE ]')
+
+    @_('IF LEFT_PAREN expression RIGHT_PAREN statement [ ELSE statement ]')
     def statement(self, p):
-        return IfStmt(p.expression, p.statements0, p.statements1)
+        return IfStmt(p.expression, p.statement0, p.statement1)
+
+    @_('WHILE LEFT_PAREN expression RIGHT_PAREN statement')
+    def statement(self, p):
+        return WhileStmt(p.expression, p.statement)
+    
+    @_('expression OR expression',
+       'expression AND expression',
+       )
+    def expression(self, p):
+        return Logical(p.expression0, p[1], p.expression1)
     
     @_('expression PLUS expression',
        'expression MINUS expression',

@@ -27,6 +27,12 @@ class Binary(Expression):
         self.op = op
         self.right = right
 
+class Logical(Expression):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
+        
 class Unary(Expression):
     def __init__(self, op, operand):
         self.op = op
@@ -62,12 +68,17 @@ class IfStmt(Statement):
         self.consequence = consequence
         self.alternative = alternative
 
+class WhileStmt(Statement):
+    def __init__(self, test, body):
+        self.test = test
+        self.body = body
+        
 class Assign(Statement):
     def __init__(self, name, value):
         self.name = name
         self.value = value
-        
-class Statements(Node):
+
+class Statements(Statement):
     def __init__(self, statements):
         self.statements = statements
 
@@ -103,6 +114,9 @@ class ASTPrinter(NodeVisitor):
         else:
             return f'(if {self.visit(node.test)} {self.visit(node.consequence)})'
 
+    def visit_WhileStmt(self, node):
+        return f'(while {self.visit(node.test)} {self.visit(node.body)})'
+    
     def visit_Assign(self, node):
         return f'(assign {node.name} {node.value})'
     
@@ -122,6 +136,8 @@ class ASTPrinter(NodeVisitor):
     def visit_Binary(self, node):
         return f'({node.op} {self.visit(node.left)} {self.visit(node.right)})'
 
+    visit_Logical = visit_Binary
+    
     def visit_Unary(self, node):
         return f'({node.op} {self.visit(node.operand)})'
 
