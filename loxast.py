@@ -36,6 +36,10 @@ class Grouping(Expression):
     def __init__(self, value):
         self.value = value
 
+class Variable(Expression):
+    def __init__(self, name):
+        self.name = name
+        
 class Statement(Node):
     pass
 
@@ -47,6 +51,17 @@ class ExpressionStmt(Statement):
     def __init__(self, expr):
         self.expr = expr
 
+class VarDeclaration(Statement):
+    def __init__(self, name, initializer):
+        self.name = name
+        self.initializer = initializer
+        
+class IfStmt(Statement):
+    def __init__(self, test, consequence, alternative):
+        self.test = test
+        self.consequence = consequence
+        self.alternative = alternative
+        
 class Statements(Node):
     def __init__(self, statements):
         self.statements = statements
@@ -73,6 +88,9 @@ class ASTPrinter(NodeVisitor):
 
     def visit_ExpressionStmt(self, node):
         return f'(exprstmt {self.visit(node.expr)})'
+
+    def visit_VarDeclaration(self, node):
+        return f'(var {node.name} {self.visit(node.initializer)})' if node.initializer else f'(var {node.name})'
     
     def visit_Literal(self, node):
         if node.value is None:
@@ -84,6 +102,9 @@ class ASTPrinter(NodeVisitor):
         else:
             return repr(node.value)
 
+    def visit_Variable(self, node):
+        return node.name
+    
     def visit_Binary(self, node):
         return f'({node.op} {self.visit(node.left)} {self.visit(node.right)})'
 

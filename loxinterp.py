@@ -26,6 +26,9 @@ def _check_numeric_operand(op, value):
         raise RuntimeError(f"{op} operand must be a number")
     
 class LoxInterpreter(NodeVisitor):
+    def __init__(self):
+        self.env = { }
+        
     def visit_Statements(self, node):
         for stmt in node.statements:
             self.visit(stmt)
@@ -78,10 +81,21 @@ class LoxInterpreter(NodeVisitor):
     def visit_Grouping(self, node):
         return self.visit(node.value)
 
+    def visit_Variable(self, node):
+        if node.name in self.env:
+            return self.env[node.name]
+        else:
+            raise RuntimeError(f'Variable {node.name} not defined')
+    
     def visit_Print(self, node):
         print(self.visit(node.value))
 
     def visit_ExpressionStmt(self, node):
         self.visit(node.expr)
         
-            
+    def visit_VarDeclaration(self, node):
+        if node.initializer:
+            initializer = self.visit(node.initializer)
+        else:
+            initializer = None
+        self.env[node.name] = initializer

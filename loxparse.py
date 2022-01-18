@@ -26,6 +26,10 @@ class LoxParser(Parser):
     @_('PRINT expression SEMI')
     def statement(self, p):
         return Print(p.expression)
+
+    @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
+    def statement(self, p):
+        return VarDeclaration(p.IDENTIFIER, p.expression)
     
     @_('expression PLUS expression',
        'expression MINUS expression',
@@ -65,30 +69,33 @@ class LoxParser(Parser):
     def expression(self, p):
         return Literal(None)
 
+    @_('IDENTIFIER')
+    def expression(self, p):
+        return Variable(p.IDENTIFIER)
 
 def test_parsing():
     lexer = LoxLexer()
     parser = LoxParser()
 
     # Test expression parsing and precedence
-    assert parser.parse(lexer.tokenize("print 2;")) == Print(Literal(2))
-    assert parser.parse(lexer.tokenize('print "hello";')) == Print(Literal('hello'))
-    assert parser.parse(lexer.tokenize('print true;')) == Print(Literal(True))
-    assert parser.parse(lexer.tokenize('print false;')) == Print(Literal(False))
-    assert parser.parse(lexer.tokenize('print nil;')) == Print(Literal(None))        
-    assert parser.parse(lexer.tokenize("print -2+3;")) == Print(Binary(Unary("-",Literal(2)),"+",Literal(3)))
-    assert parser.parse(lexer.tokenize("print 2+3*4;")) == Print(Binary(Literal(2), "+",
-                                                                        Binary(Literal(3), "*", Literal(4))))
-    assert parser.parse(lexer.tokenize("print 2*3+4;")) == Print(Binary(Binary(Literal(2), "*", Literal(3)),
-                                                                        "+", Literal(4)))
-    assert parser.parse(lexer.tokenize("print 2+3 < 4+5;")) == Print(
-        Binary(Binary(Literal(2), "+", Literal(3)), "<", Binary(Literal(4), "+", Literal(5))))
+    assert parser.parse(lexer.tokenize("print 2;")) == Statements([Print(Literal(2))])
+    assert parser.parse(lexer.tokenize('print "hello";')) == Statements([Print(Literal('hello'))])
+    assert parser.parse(lexer.tokenize('print true;')) == Statements([Print(Literal(True))])
+    assert parser.parse(lexer.tokenize('print false;')) == Statements([Print(Literal(False))])
+    assert parser.parse(lexer.tokenize('print nil;')) == Statements([Print(Literal(None))])
+    assert parser.parse(lexer.tokenize("print -2+3;")) == Statements([Print(Binary(Unary("-",Literal(2)),"+",Literal(3)))])
+    assert parser.parse(lexer.tokenize("print 2+3*4;")) == Statements([Print(Binary(Literal(2), "+",
+                                                                        Binary(Literal(3), "*", Literal(4))))])
+    assert parser.parse(lexer.tokenize("print 2*3+4;")) == Statements([Print(Binary(Binary(Literal(2), "*", Literal(3)),
+                                                                        "+", Literal(4)))])
+    assert parser.parse(lexer.tokenize("print 2+3 < 4+5;")) == Statements([Print(
+        Binary(Binary(Literal(2), "+", Literal(3)), "<", Binary(Literal(4), "+", Literal(5))))])
 
-    assert parser.parse(lexer.tokenize("print 2 < 3 == 4 < 5;")) == Print(
-        Binary(Binary(Literal(2), "<", Literal(3)), "==", Binary(Literal(4), "<", Literal(5))))        
-
-    assert parser.parse(lexer.tokenize("print (2+3)*4;")) == Print(
-        Binary(Grouping(Binary(Literal(2), "+", Literal(3))), "*", Literal(4)))
+    assert parser.parse(lexer.tokenize("print 2 < 3 == 4 < 5;")) == Statements([Print(
+        Binary(Binary(Literal(2), "<", Literal(3)), "==", Binary(Literal(4), "<", Literal(5))))])
+    
+    assert parser.parse(lexer.tokenize("print (2+3)*4;")) == Statements([Print(
+        Binary(Grouping(Binary(Literal(2), "+", Literal(3))), "*", Literal(4)))])
 
 if __name__ == '__main__':
     test_parsing()
