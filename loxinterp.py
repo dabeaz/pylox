@@ -19,13 +19,17 @@ def _check_numeric_operands(op, left, right):
     else:
         raise RuntimeError(f"{op} operands must be numbers")
 
-def _check_numeric_operand(value):
+def _check_numeric_operand(op, value):
     if isinstance(value, float):
         return True
     else:
         raise RuntimeError(f"{op} operand must be a number")
     
 class LoxInterpreter(NodeVisitor):
+    def visit_Statements(self, node):
+        for stmt in node.statements:
+            self.visit(stmt)
+
     def visit_Literal(self, node):
         return node.value
 
@@ -76,5 +80,8 @@ class LoxInterpreter(NodeVisitor):
 
     def visit_Print(self, node):
         print(self.visit(node.value))
+
+    def visit_ExpressionStmt(self, node):
+        self.visit(node.expr)
         
             

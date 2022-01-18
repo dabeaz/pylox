@@ -14,9 +14,17 @@ class LoxParser(Parser):
         ('left', STAR, SLASH),
         ('right', UNARY),
         )
+
+    @_('{ statement }')
+    def statements(self, p):
+        return Statements(p.statement)
+    
+    @_('expression SEMI')
+    def statement(self, p):
+        return ExpressionStmt(p.expression)
     
     @_('PRINT expression SEMI')
-    def print_statement(self, p):
+    def statement(self, p):
         return Print(p.expression)
     
     @_('expression PLUS expression',
