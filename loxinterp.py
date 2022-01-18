@@ -83,7 +83,7 @@ class LoxInterpreter(NodeVisitor):
 
     def visit_Variable(self, node):
         if node.name in self.env:
-            return self.env[node.name]
+            return self.env[node.name]    # FIX for scopes
         else:
             raise RuntimeError(f'Variable {node.name} not defined')
     
@@ -99,3 +99,15 @@ class LoxInterpreter(NodeVisitor):
         else:
             initializer = None
         self.env[node.name] = initializer
+
+    def visit_Assign(self, node):
+        if node.name not in self.env:
+            raise RuntimeError(f'Variable {node.name} not declared')
+        self.env[node.name] = self.visit(node.value)     # FIX for scopes
+        
+    def visit_IfStmt(self, node):
+        test = self.visit(node.test)
+        if test:
+            self.visit(node.consequence)
+        elif node.alternative:
+            self.visit(node.alternative)

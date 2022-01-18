@@ -30,6 +30,14 @@ class LoxParser(Parser):
     @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
     def statement(self, p):
         return VarDeclaration(p.IDENTIFIER, p.expression)
+
+    @_('IDENTIFIER EQUAL expression SEMI')
+    def statement(self, p):
+        return Assign(p.IDENTIFIER, p.expression)
+    
+    @_('IF expression LEFT_BRACE statements RIGHT_BRACE [ ELSE LEFT_BRACE statements RIGHT_BRACE ]')
+    def statement(self, p):
+        return IfStmt(p.expression, p.statements0, p.statements1)
     
     @_('expression PLUS expression',
        'expression MINUS expression',

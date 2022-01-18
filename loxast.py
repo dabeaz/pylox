@@ -61,6 +61,11 @@ class IfStmt(Statement):
         self.test = test
         self.consequence = consequence
         self.alternative = alternative
+
+class Assign(Statement):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
         
 class Statements(Node):
     def __init__(self, statements):
@@ -91,6 +96,15 @@ class ASTPrinter(NodeVisitor):
 
     def visit_VarDeclaration(self, node):
         return f'(var {node.name} {self.visit(node.initializer)})' if node.initializer else f'(var {node.name})'
+
+    def visit_IfStmt(self, node):
+        if node.alternative:
+            return f'(if {self.visit(node.test)} {self.visit(node.consequence)} {self.visit(node.alternative)})'
+        else:
+            return f'(if {self.visit(node.test)} {self.visit(node.consequence)})'
+
+    def visit_Assign(self, node):
+        return f'(assign {node.name} {node.value})'
     
     def visit_Literal(self, node):
         if node.value is None:
