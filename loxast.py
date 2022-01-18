@@ -55,6 +55,32 @@ class NodeVisitor:
         method = f'visit_{type(node).__name__}'
         return getattr(self, method, lambda x: x)(node)
 
+# Debugging class for turning the AST into S-expressions
+
+class ASTPrinter(NodeVisitor):
+    def visit_Print(self, node):
+        return f'(print {self.visit(node.value)})'
+
+    def visit_Literal(self, node):
+        if node.value is None:
+            return "nil"
+        elif node.value is True:
+            return "true"
+        elif node.value is False:
+            return "false"
+        else:
+            return repr(node.value)
+
+    def visit_Binary(self, node):
+        return f'({node.op} {self.visit(node.left)} {self.visit(node.right)})'
+
+    def visit_Unary(self, node):
+        return f'({node.op} {self.visit(node.operand)})'
+
+    def visit_Grouping(self, node):
+        return f'(group {self.visit(node.value)})'
+    
+        
     
 
     

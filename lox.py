@@ -4,6 +4,7 @@
 
 import loxscan
 import loxparse
+import loxast
 
 def main(argv):
     if len(argv) != 2:
@@ -14,7 +15,7 @@ def main(argv):
     lexer = loxscan.LoxLexer()
     parser = loxparse.LoxParser()
     ast = parser.parse(lexer.tokenize(source))
-    print(ast)
+    print(loxast.ASTPrinter().visit(ast))
 
 if __name__ == '__main__':
     import sys
