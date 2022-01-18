@@ -5,6 +5,9 @@ class Node:
         args = ', '.join(f'{key}={value!r}' for key, value in vars(self).items())
         return f'{type(self).__name__}({args})'
 
+    def __eq__(self, other):
+        return type(self) == type(other) and vars(self) == vars(other)
+
 class Expression(Node):
     pass
 

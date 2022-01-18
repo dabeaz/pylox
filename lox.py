@@ -3,6 +3,7 @@
 # Main program
 
 import loxscan
+import loxparse
 
 def main(argv):
     if len(argv) != 2:
@@ -11,8 +12,9 @@ def main(argv):
         source = file.read()
         
     lexer = loxscan.LoxLexer()
-    for tok in lexer.tokenize(source):
-        print(tok)
+    parser = loxparse.LoxParser()
+    ast = parser.parse(lexer.tokenize(source))
+    print(ast)
 
 if __name__ == '__main__':
     import sys
