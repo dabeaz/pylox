@@ -1,7 +1,7 @@
 # pylox
 
 Python implementation of the Lox language from Robert Nystrom's Crafting Interpreters.
-https://craftinginterpreters.com
+https://craftinginterpreters.com.    This only implements the tree-walking interpreter in Part 1.
 
 ## Notes
 
