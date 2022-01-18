@@ -5,7 +5,7 @@ from sly import Lexer
 class LoxLexer(Lexer):
     tokens = { LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
                COMMA, DOT, MINUS, PLUS, STAR, SLASH, SEMI,
-               BANG, BANG_EQUAL, LESS, LESS_EQUAL,
+               EQUAL, EQUAL_EQUAL, BANG, BANG_EQUAL, LESS, LESS_EQUAL,
                GREATER, GREATER_EQUAL, 
                NUMBER, IDENTIFIER, STRING,
                AND, CLASS, ELSE, FALSE, FOR, FUN, IF, NIL,
@@ -33,6 +33,8 @@ class LoxLexer(Lexer):
     STAR = r'\*'
     SLASH = r'/'
     SEMI = r';'
+    EQUAL_EQUAL = r'=='
+    EQUAL = r'='
     BANG_EQUAL = r'!='
     BANG = r'!'
     LESS_EQUAL = r'<='
@@ -75,12 +77,12 @@ class LoxLexer(Lexer):
 
 def test_scanner():
     lexer = LoxLexer()
-    tokens = lexer.tokenize("""( ) { } , . - + * 
+    tokens = lexer.tokenize("""( ) { } , . - + * = ==
                             // This is a comment
                             / ; ! != < <= > >=""")
     toktypes = [t.type for t in tokens]
     assert toktypes == [ 'LEFT_PAREN', 'RIGHT_PAREN', 'LEFT_BRACE', 'RIGHT_BRACE',
-                         'COMMA', 'DOT', 'MINUS', 'PLUS', 'STAR', 'SLASH',
+                         'COMMA', 'DOT', 'MINUS', 'PLUS', 'STAR', 'EQUAL', 'EQUAL_EQUAL', 'SLASH',
                          'SEMI', 'BANG', 'BANG_EQUAL', 'LESS', 'LESS_EQUAL',
                          'GREATER', 'GREATER_EQUAL']
 
