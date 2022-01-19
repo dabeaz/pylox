@@ -6,7 +6,13 @@ class Node:
     @classmethod
     def __init_subclass__(cls):
         Node._nodenames.add(cls.__name__)
-        
+
+    _fields = []
+    def __init__(self, *args):
+        assert len(args) == len(type(self)._fields)
+        for name, val in zip(type(self)._fields, args):
+            setattr(self, name, val)
+            
     def __repr__(self):
         args = ', '.join(f'{key}={value!r}' for key, value in vars(self).items())
         return f'{type(self).__name__}({args})'
@@ -14,89 +20,67 @@ class Node:
     def __eq__(self, other):
         return type(self) == type(other) and vars(self) == vars(other)
 
+# -- Expressions represent values
 class Expression(Node):
     pass
 
 class Literal(Expression):
-    def __init__(self, value):
-        self.value = value
+    _fields = ['value']
 
 class Binary(Expression):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
+    _fields = ['left', 'op', 'right']
 
 class Logical(Expression):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
+    _fields = ['left', 'op', 'right']
         
 class Unary(Expression):
-    def __init__(self, op, operand):
-        self.op = op
-        self.operand = operand
-
+    _fields = ['op', 'operand']
+    
 class Grouping(Expression):
-    def __init__(self, value):
-        self.value = value
+    _fields = ['value']
 
 class Variable(Expression):
-    def __init__(self, name):
-        self.name = name
+    _fields = ['name']
 
 class Assign(Expression):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
+    _fields = ['name', 'value']
 
 class Call(Expression):
-    def __init__(self, func, arguments):
-        self.func = func
-        self.arguments = arguments
-        
+    _fields = ['func', 'arguments']
+
+# -- Statements represent actions with no associated value
 class Statement(Node):
     pass
 
 class Print(Statement):
-    def __init__(self, value):
-        self.value = value
+    _fields = ['value']
 
 class ExpressionStmt(Statement):
-    def __init__(self, expr):
-        self.expr = expr
-
-class VarDeclaration(Statement):
-    def __init__(self, name, initializer):
-        self.name = name
-        self.initializer = initializer
-
-class FuncDeclaration(Statement):
-    def __init__(self, name, parameters, statements):
-        self.name = name
-        self.parameters = parameters
-        self.statements = statements
+    _fields = ['expr']
         
 class IfStmt(Statement):
-    def __init__(self, test, consequence, alternative):
-        self.test = test
-        self.consequence = consequence
-        self.alternative = alternative
+    _fields = ['test', 'consequence', 'alternative']
 
 class WhileStmt(Statement):
-    def __init__(self, test, body):
-        self.test = test
-        self.body = body
+    _fields = ['test', 'body']
 
 class Return(Statement):
-    def __init__(self, value):
-        self.value = value
+    _fields = ['value']
         
 class Statements(Statement):
-    def __init__(self, statements):
-        self.statements = statements
+    _fields = ['statements']
 
+# -- Declarations are special kinds of statements that declare the existence of something
+class Declaration(Statement):
+    pass
+
+class VarDeclaration(Statement):
+    _fields = ['name', 'initializer']
+
+class FuncDeclaration(Statement):
+    _fields = ['name', 'parameters', 'statements']
+    
+# -- Visitor class
 class NodeVisitor:
     @classmethod
     def __init_subclass__(cls):
@@ -109,7 +93,6 @@ class NodeVisitor:
         return getattr(self, method)(node)
 
 # Debugging class for turning the AST into S-expressions
-
 class ASTPrinter(NodeVisitor):
     def visit_Statements(self, node):
         return '(statements ' + ' '.join(self.visit(stmt) for stmt in node.statements) + ')'
@@ -133,7 +116,7 @@ class ASTPrinter(NodeVisitor):
         return f'(while {self.visit(node.test)} {self.visit(node.body)})'
     
     def visit_Assign(self, node):
-        return f'(assign {node.name} {node.value})'
+        return f'(assign {node.name} {self.visit(node.value)})'
     
     def visit_Literal(self, node):
         if node.value is None:
