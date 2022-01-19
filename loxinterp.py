@@ -78,7 +78,10 @@ class LoxClass:
         return this
 
     def find_method(self, name):
-        return self.methods.get(name)
+        meth = self.methods.get(name)
+        if meth is None and self.superclass:
+            return self.superclass.find_method(name)
+        return meth
 
 class LoxInstance:
     def __init__(self, klass):
@@ -218,10 +221,17 @@ class LoxInterpreter(NodeVisitor):
         raise ReturnException(self.visit(node.value))
 
     def visit_ClassDeclaration(self, node):
+        if node.superclass:
+            superclass = self.visit(node.superclass)
+            env = self.env.new_child()
+            env['super'] = superclass
+        else:
+            superclass = None
+            env = self.env
         methods = { }
         for meth in node.methods:
-            methods[meth.name] = LoxFunction(self, meth.parameters, meth.statements, self.env)
-        cls = LoxClass(node.name, None, methods)
+            methods[meth.name] = LoxFunction(self, meth.parameters, meth.statements, env)
+        cls = LoxClass(node.name, superclass, methods)
         self.env[node.name] = cls
         
     def visit_Get(self, node):
@@ -242,4 +252,12 @@ class LoxInterpreter(NodeVisitor):
 
     def visit_This(self, node):
         return self.env.maps[self.localmap[id(node)]]['this']
-        
+
+    def visit_Super(self, node):
+        distance = self.localmap[id(node)]
+        superclass = self.env.maps[distance]['super']
+        this = self.env.maps[distance-1]['this']
+        method = superclass.find_method(node.name)
+        if not method:
+            raise RuntimeError(f"Undefined property {node.name!r}")
+        return method.bind(this)

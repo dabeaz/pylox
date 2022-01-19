@@ -55,7 +55,7 @@ class LoxParser(Parser):
 
     @_('CLASS IDENTIFIER [ LESS IDENTIFIER ] LEFT_BRACE { function } RIGHT_BRACE')
     def class_declaration(self, p):
-        return ClassDeclaration(p.IDENTIFIER0, p.IDENTIFIER1, p.function)
+        return ClassDeclaration(p.IDENTIFIER0, Variable(p.IDENTIFIER1) if p.IDENTIFIER1 else None, p.function)
     
     @_('statement')
     def declaration(self, p):
@@ -186,9 +186,9 @@ class LoxParser(Parser):
     def factor(self, p):
         return This()
 
-    @_('SUPER')
+    @_('SUPER DOT IDENTIFIER')
     def factor(self, p):
-        return Super()
+        return Super(p.IDENTIFIER)
     
     @_('factor DOT IDENTIFIER')
     def factor(self, p):

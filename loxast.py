@@ -58,7 +58,7 @@ class This(Expression):
     _fields = [ ]
 
 class Super(Expression):
-    _fields = [ ]
+    _fields = ['name']
     
 # -- Statements represent actions with no associated value
 class Statement(Node):
@@ -179,7 +179,7 @@ class ASTPrinter(NodeVisitor):
         return 'this'
 
     def visit_Super(self, node):
-        return 'super'
+        return f'(super {node.name})'
     
     
     

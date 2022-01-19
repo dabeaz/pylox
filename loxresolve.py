@@ -38,11 +38,17 @@ def resolve(node, env:ChainMap, localmap:dict):
         resolve(node.statements, childenv, localmap)
 
     elif isinstance(node, ClassDeclaration):
-        env[node.name] = True
-        new_env = env.new_child()
-        new_env['this'] = True
+        env[node.name] = True        
+        if node.superclass:
+            if node.superclass.name == node.name:
+                raise RuntimeError("A class can't inherit from itself")
+            resolve(node.superclass, env, localmap)
+            env = env.new_child()
+            env['super'] = True
+        env = env.new_child()
+        env['this'] = True
         for meth in node.methods:
-            resolve(meth, new_env, localmap)
+            resolve(meth, env, localmap)
         
     elif isinstance(node, Literal):
         pass
@@ -89,3 +95,9 @@ def resolve(node, env:ChainMap, localmap:dict):
             localmap[id(node)] = _resolve_name('this', env)
         else:
             raise RuntimeError("'this' used outside of a class")
+
+    elif isinstance(node, Super):
+        if 'super' in env:
+            localmap[id(node)] = _resolve_name('super', env)
+        else:
+            raise RuntimeError("'super' used outside of a class")
