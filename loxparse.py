@@ -27,13 +27,26 @@ class LoxParser(Parser):
     def declarations(self, p):
         return Statements(p.declaration)
 
-    @_('var_declaration')
+    @_('var_declaration',
+       'func_declaration')
     def declaration(self, p):
-        return p.var_declaration
+        return p[0]
     
     @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
     def var_declaration(self, p):
         return VarDeclaration(p.IDENTIFIER, p.expression)
+
+    @_('FUN IDENTIFIER LEFT_PAREN parameters RIGHT_PAREN statement_block')
+    def func_declaration(self, p):
+        return FuncDeclaration(p.IDENTIFIER, p.parameters, p.statement_block)
+
+    @_('FUN IDENTIFIER LEFT_PAREN RIGHT_PAREN statement_block')
+    def func_declaration(self, p):
+        return FuncDeclaration(p.IDENTIFIER, [], p.statement_block)
+
+    @_('IDENTIFIER { COMMA IDENTIFIER }')
+    def parameters(self, p):
+        return [ p.IDENTIFIER0 ] + p.IDENTIFIER1
     
     @_('statement')
     def declaration(self, p):
@@ -44,7 +57,8 @@ class LoxParser(Parser):
        'print_statement',
        'if_statement',
        'while_statement',
-       'for_statement')
+       'for_statement',
+       'return_statement')
     def statement(self, p):
         return p[0]
     
@@ -59,7 +73,6 @@ class LoxParser(Parser):
     @_('PRINT expression SEMI')
     def print_statement(self, p):
         return Print(p.expression)
-
 
     @_('IF LEFT_PAREN expression RIGHT_PAREN statement [ ELSE statement ]')
     def if_statement(self, p):
@@ -91,6 +104,10 @@ class LoxParser(Parser):
     def for_initializer(self, p):
         return p[0]
 
+    @_('RETURN expression SEMI')
+    def return_statement(self, p):
+        return Return(p.expression)
+    
     @_('IDENTIFIER EQUAL expression')
     def expression(self, p):
         return Assign(p.IDENTIFIER, p.expression)
@@ -115,33 +132,49 @@ class LoxParser(Parser):
     def expression(self, p):
         return Binary(p.expression0, p[1], p.expression1)
 
-    @_('LEFT_PAREN expression RIGHT_PAREN')
+    @_('factor')
     def expression(self, p):
+        return p.factor
+    
+    @_('LEFT_PAREN expression RIGHT_PAREN')
+    def factor(self, p):
         return Grouping(p.expression)
 
-    @_('MINUS expression %prec UNARY',
-       'BANG expression %prec UNARY')
-    def expression(self, p):
-        return Unary(p[0], p.expression)
+    @_('MINUS factor %prec UNARY',
+       'BANG factor %prec UNARY')
+    def factor(self, p):
+        return Unary(p[0], p.factor)
 
     @_('NUMBER',
        'STRING',
        )
-    def expression(self, p):
+    def factor(self, p):
         return Literal(p[0])
 
     @_('TRUE',
        'FALSE')
-    def expression(self, p):
+    def factor(self, p):
         return Literal(p[0] == 'true')
 
     @_('NIL')
-    def expression(self, p):
+    def factor(self, p):
         return Literal(None)
 
     @_('IDENTIFIER')
-    def expression(self, p):
+    def factor(self, p):
         return Variable(p.IDENTIFIER)
+
+    @_('factor LEFT_PAREN arguments RIGHT_PAREN')
+    def factor(self, p):
+        return Call(p.factor, p.arguments)
+
+    @_('factor LEFT_PAREN RIGHT_PAREN')
+    def factor(self, p):
+        return Call(p.factor, [])
+
+    @_('expression { COMMA expression }')
+    def arguments(self, p):
+        return [ p.expression0 ] + p.expression1
 
 def test_parsing():
     lexer = LoxLexer()

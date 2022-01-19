@@ -26,6 +26,35 @@ def _check_numeric_operand(op, value):
     else:
         raise RuntimeError(f"{op} operand must be a number")
 
+class ReturnException(Exception):
+    def __init__(self, value):
+        self.value = value
+        
+class LoxFunction:
+    def __init__(self, interp, parameters, statements, env):
+        self.interp = interp
+        self.parameters = parameters
+        self.statements = statements
+        self.env = env
+
+    def __call__(self, *args):
+        if len(args) != len(self.parameters):
+            raise RuntimeError("Wrong # arguments")
+        newenv = self.env.new_child()
+        for name, arg in zip(self.parameters, args):
+            newenv[name] = arg
+
+        oldenv = self.interp.env
+        self.interp.env = newenv
+        try:
+            self.interp.visit(self.statements)
+            result = None
+        except ReturnException as e:
+            result = e.value
+        finally:
+            self.interp.env = oldenv
+        return result
+        
 class LoxInterpreter(NodeVisitor):
     def __init__(self):
         self.env = ChainMap()
@@ -97,7 +126,15 @@ class LoxInterpreter(NodeVisitor):
             return self.env[node.name]
         else:
             raise RuntimeError(f'Variable {node.name} not defined')
-    
+        
+    def visit_Call(self, node):
+        callee = self.visit(node.func)
+        if not callable(callee):
+            raise RuntimeError(f'{callee} is not callable')
+        
+        args = [ self.visit(arg) for arg in node.arguments ]
+        return callee(*args)
+        
     def visit_Print(self, node):
         print(self.visit(node.value))
 
@@ -111,6 +148,10 @@ class LoxInterpreter(NodeVisitor):
             initializer = None
         self.env[node.name] = initializer
 
+    def visit_FuncDeclaration(self, node):
+        func = LoxFunction(self, node.parameters, node.statements, self.env)
+        self.env[node.name] = func
+        
     def visit_Assign(self, node):
         value = self.visit(node.value)
         for env in self.env.maps:
@@ -130,4 +171,7 @@ class LoxInterpreter(NodeVisitor):
     def visit_WhileStmt(self, node):
         while _is_truthy(self.visit(node.test)):
             self.visit(node.body)
-            
+
+    def visit_Return(self, node):
+        raise ReturnException(self.visit(node.value))
+    

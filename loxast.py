@@ -50,6 +50,11 @@ class Assign(Expression):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+class Call(Expression):
+    def __init__(self, func, arguments):
+        self.func = func
+        self.arguments = arguments
         
 class Statement(Node):
     pass
@@ -66,6 +71,12 @@ class VarDeclaration(Statement):
     def __init__(self, name, initializer):
         self.name = name
         self.initializer = initializer
+
+class FuncDeclaration(Statement):
+    def __init__(self, name, parameters, statements):
+        self.name = name
+        self.parameters = parameters
+        self.statements = statements
         
 class IfStmt(Statement):
     def __init__(self, test, consequence, alternative):
@@ -78,6 +89,10 @@ class WhileStmt(Statement):
         self.test = test
         self.body = body
 
+class Return(Statement):
+    def __init__(self, value):
+        self.value = value
+        
 class Statements(Statement):
     def __init__(self, statements):
         self.statements = statements
@@ -97,7 +112,7 @@ class NodeVisitor:
 
 class ASTPrinter(NodeVisitor):
     def visit_Statements(self, node):
-        return '(statements ' + '\n'.join(self.visit(stmt) for stmt in node.statements) + '\n)'
+        return '(statements ' + ' '.join(self.visit(stmt) for stmt in node.statements) + ')'
 
     def visit_Print(self, node):
         return f'(print {self.visit(node.value)})'
@@ -143,7 +158,15 @@ class ASTPrinter(NodeVisitor):
 
     def visit_Grouping(self, node):
         return f'(group {self.visit(node.value)})'
-    
+
+    def visit_Call(self, node):
+        return f'(call {self.visit(node.func)} ' + ' '.join(self.visit(arg) for arg in node.arguments) + ')'
+
+    def visit_Return(self, node):
+        return f'(return {self.visit(node.value)})'
+
+    def visit_FuncDeclaration(self, node):
+        return f'(func {node.name} {node.parameters} {self.visit(node.statements)})'
         
     
 
