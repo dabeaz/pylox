@@ -37,6 +37,11 @@ def resolve(node, env:ChainMap, localmap:dict):
             childenv[p] = len(childenv)
         resolve(node.statements, childenv, localmap)
 
+    elif isinstance(node, ClassDeclaration):
+        env[node.name] = True
+        # TODO
+        ...
+        
     elif isinstance(node, Literal):
         pass
 
@@ -69,6 +74,6 @@ def resolve(node, env:ChainMap, localmap:dict):
         newenv = env.new_child()
         for stmt in node.statements:
             resolve(stmt, newenv, localmap)
-
+        
     
         

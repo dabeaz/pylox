@@ -28,7 +28,8 @@ class LoxParser(Parser):
         return Statements(p.declaration)
 
     @_('var_declaration',
-       'func_declaration')
+       'func_declaration',
+       'class_declaration',)
     def declaration(self, p):
         return p[0]
     
@@ -36,17 +37,25 @@ class LoxParser(Parser):
     def var_declaration(self, p):
         return VarDeclaration(p.IDENTIFIER, p.expression)
 
-    @_('FUN IDENTIFIER LEFT_PAREN parameters RIGHT_PAREN statement_block')
+    @_('FUN function')
     def func_declaration(self, p):
+        return p.function
+
+    @_('IDENTIFIER LEFT_PAREN parameters RIGHT_PAREN statement_block')
+    def function(self, p):
         return FuncDeclaration(p.IDENTIFIER, p.parameters, p.statement_block)
 
-    @_('FUN IDENTIFIER LEFT_PAREN RIGHT_PAREN statement_block')
-    def func_declaration(self, p):
+    @_('IDENTIFIER LEFT_PAREN RIGHT_PAREN statement_block')
+    def function(self, p):
         return FuncDeclaration(p.IDENTIFIER, [], p.statement_block)
-
+    
     @_('IDENTIFIER { COMMA IDENTIFIER }')
     def parameters(self, p):
         return [ p.IDENTIFIER0 ] + p.IDENTIFIER1
+
+    @_('CLASS IDENTIFIER [ LESS IDENTIFIER ] LEFT_BRACE { function } RIGHT_BRACE')
+    def class_declaration(self, p):
+        return ClassDeclaration(p.IDENTIFIER0, p.IDENTIFIER1, p.function)
     
     @_('statement')
     def declaration(self, p):
@@ -112,9 +121,14 @@ class LoxParser(Parser):
     def return_statement(self, p):
         return Return(p.expression)
     
-    @_('IDENTIFIER EQUAL expression')
+    @_('expression EQUAL expression')
     def expression(self, p):
-        return Assign(p.IDENTIFIER, p.expression)
+        if isinstance(p.expression0, Variable):
+            return Assign(p.expression0.name, p.expression1)
+        elif isinstance(p.expression0, Get):
+            return Set(p.expression0.object, p.expression0.name, p.expression1)
+        else:
+            raise SyntaxError(f"Can't assign to {p.expression0}")
                 
     @_('expression OR expression',
        'expression AND expression',
@@ -168,6 +182,18 @@ class LoxParser(Parser):
     def factor(self, p):
         return Variable(p.IDENTIFIER)
 
+    @_('THIS')
+    def factor(self, p):
+        return This()
+
+    @_('SUPER')
+    def factor(self, p):
+        return Super()
+    
+    @_('factor DOT IDENTIFIER')
+    def factor(self, p):
+        return Get(p.factor, p.IDENTIFIER)
+    
     @_('factor LEFT_PAREN arguments RIGHT_PAREN')
     def factor(self, p):
         return Call(p.factor, p.arguments)

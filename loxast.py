@@ -48,6 +48,18 @@ class Assign(Expression):
 class Call(Expression):
     _fields = ['func', 'arguments']
 
+class Get(Expression):
+    _fields = ['object', 'name']
+
+class Set(Expression):
+    _fields = ['object', 'name', 'value']
+
+class This(Expression):
+    _fields = [ ]
+
+class Super(Expression):
+    _fields = [ ]
+    
 # -- Statements represent actions with no associated value
 class Statement(Node):
     pass
@@ -74,11 +86,14 @@ class Statements(Statement):
 class Declaration(Statement):
     pass
 
-class VarDeclaration(Statement):
+class VarDeclaration(Declaration):
     _fields = ['name', 'initializer']
 
-class FuncDeclaration(Statement):
+class FuncDeclaration(Declaration):
     _fields = ['name', 'parameters', 'statements']
+
+class ClassDeclaration(Declaration):
+    _fields = ['name', 'superclass', 'methods']
     
 # -- Visitor class
 class NodeVisitor:
@@ -150,7 +165,23 @@ class ASTPrinter(NodeVisitor):
 
     def visit_FuncDeclaration(self, node):
         return f'(func {node.name} {node.parameters} {self.visit(node.statements)})'
-        
+
+    def visit_Get(self, node):
+        return f'(get {self.visit(node.object)} {node.name})'
+
+    def visit_Set(self, node):
+        return f'(set {self.visit(node.object)} {node.name} {self.visit(node.value)})'
+
+    def visit_ClassDeclaration(self, node):
+        return f'(class {node.name} {node.superclass} ' + ' '.join(self.visit(meth) for meth in node.methods) + ')'
+
+    def visit_This(self, node):
+        return 'this'
+
+    def visit_Super(self, node):
+        return 'super'
+    
+    
     
 
     

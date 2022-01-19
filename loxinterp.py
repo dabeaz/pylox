@@ -55,7 +55,18 @@ class LoxFunction:
         finally:
             self.interp.env = oldenv
         return result
-        
+
+class LoxClass:
+    def __init__(self, name, superclass=None):
+        self.name = name
+        self.superclass = superclass
+
+    def __str__(self):
+        return self.name
+
+    def __call__(self, *args):
+        pass
+    
 class LoxInterpreter(NodeVisitor):
     def __init__(self):
         self.env = ChainMap()
@@ -174,4 +185,8 @@ class LoxInterpreter(NodeVisitor):
     def visit_Return(self, node):
         raise ReturnException(self.visit(node.value))
 
+    def visit_ClassDeclaration(self, node):
+        cls = LoxClass(node.name, None)
+        self.env[node.name] = cls
+        
     
