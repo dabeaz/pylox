@@ -138,7 +138,7 @@ class LoxInterpreter(NodeVisitor):
     def visit_Print(self, node):
         print(self.visit(node.value))
 
-    def visit_ExpressionStmt(self, node):
+    def visit_ExprStmt(self, node):
         self.visit(node.expr)
         
     def visit_VarDeclaration(self, node):

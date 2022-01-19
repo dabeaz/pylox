@@ -68,7 +68,7 @@ class LoxParser(Parser):
 
     @_('expression SEMI')
     def expression_statement(self, p):
-        return ExpressionStmt(p.expression)
+        return ExprStmt(p.expression)
     
     @_('PRINT expression SEMI')
     def print_statement(self, p):
@@ -86,8 +86,10 @@ class LoxParser(Parser):
     def for_statement(self, p):
         body = p.statement
         if p.expression1:
-            body.statements.append(p.expression1)
-        body = WhileStmt(p.expression0, body)
+            if not isinstance(body, Statements):
+                body = Statements([body])
+            body.statements.append(ExprStmt(p.expression1))
+        body = WhileStmt(p.expression0 or Literal(True), body)
         body = Statements([p.for_initializer, body])
         return body
 
@@ -95,8 +97,10 @@ class LoxParser(Parser):
     def for_statement(self, p):
         body = p.statement
         if p.expression1:
-            body.statements.append(p.expression1)
-        body = WhileStmt(p.expression0, body)
+            if not isinstance(body, Statements):
+                body = Statements([body])
+            body.statements.append(ExprStmt(p.expression1))
+        body = WhileStmt(p.expression0 or Literal(True), body)
         return body
     
     @_('var_declaration',
@@ -180,26 +184,88 @@ def test_parsing():
     lexer = LoxLexer()
     parser = LoxParser()
 
+    def parse(source):
+        return parser.parse(lexer.tokenize(source))
+    
     # Test expression parsing and precedence
-    assert parser.parse(lexer.tokenize("print 2;")) == Statements([Print(Literal(2))])
-    assert parser.parse(lexer.tokenize('print "hello";')) == Statements([Print(Literal('hello'))])
-    assert parser.parse(lexer.tokenize('print true;')) == Statements([Print(Literal(True))])
-    assert parser.parse(lexer.tokenize('print false;')) == Statements([Print(Literal(False))])
-    assert parser.parse(lexer.tokenize('print nil;')) == Statements([Print(Literal(None))])
-    assert parser.parse(lexer.tokenize("print -2+3;")) == Statements([Print(Binary(Unary("-",Literal(2)),"+",Literal(3)))])
-    assert parser.parse(lexer.tokenize("print 2+3*4;")) == Statements([Print(Binary(Literal(2), "+",
+    assert parse("2;") == Statements([ExprStmt(Literal(2))])
+    assert parse('"hello";') == Statements([ExprStmt(Literal('hello'))])
+    assert parse('true;') == Statements([ExprStmt(Literal(True))])
+    assert parse('false;') == Statements([ExprStmt(Literal(False))])
+    assert parse('nil;') == Statements([ExprStmt(Literal(None))])
+    assert parse("-2+3;") == Statements([ExprStmt(Binary(Unary("-",Literal(2)),"+",Literal(3)))])
+    assert parse("2+3*4;") == Statements([ExprStmt(Binary(Literal(2), "+",
                                                                         Binary(Literal(3), "*", Literal(4))))])
-    assert parser.parse(lexer.tokenize("print 2*3+4;")) == Statements([Print(Binary(Binary(Literal(2), "*", Literal(3)),
+    assert parse("2*3+4;") == Statements([ExprStmt(Binary(Binary(Literal(2), "*", Literal(3)),
                                                                         "+", Literal(4)))])
-    assert parser.parse(lexer.tokenize("print 2+3 < 4+5;")) == Statements([Print(
+    assert parse("2+3 < 4+5;") == Statements([ExprStmt(
         Binary(Binary(Literal(2), "+", Literal(3)), "<", Binary(Literal(4), "+", Literal(5))))])
 
-    assert parser.parse(lexer.tokenize("print 2 < 3 == 4 < 5;")) == Statements([Print(
+    assert parse("2 < 3 == 4 < 5;") == Statements([ExprStmt(
         Binary(Binary(Literal(2), "<", Literal(3)), "==", Binary(Literal(4), "<", Literal(5))))])
     
-    assert parser.parse(lexer.tokenize("print (2+3)*4;")) == Statements([Print(
+    assert parse("(2+3)*4;") == Statements([ExprStmt(
         Binary(Grouping(Binary(Literal(2), "+", Literal(3))), "*", Literal(4)))])
 
+    assert parse("x + y(2);") == Statements([ExprStmt(
+        Binary(Variable('x'), "+", Call(Variable("y"), [Literal(2)])))])
+
+    assert parse("x = y(2);") == Statements([ExprStmt(
+        Assign("x", Call(Variable("y"), [Literal(2)])))])
+
+    # Tests of various statements
+    assert parse("print 2;") == Statements([
+        Print(Literal(2))])
+
+    assert parse("var x;") == Statements([
+        VarDeclaration("x", None)])
+
+    assert parse("var x = 2;") == Statements([
+        VarDeclaration("x", Literal(2))])
+
+    assert parse("return 2;") == Statements([
+        Return(Literal(2))])
+
+    assert parse("if (x < 1) print x; else print y;") == Statements([
+        IfStmt(Binary(Variable('x'), '<', Literal(1)),
+               Print(Variable('x')),
+               Print(Variable('y')))])
+
+    assert parse("if (x < 1) print x;") == Statements([
+        IfStmt(Binary(Variable('x'), '<', Literal(1)),
+               Print(Variable('x')),
+               None)])
+
+    assert parse("while (x < 10) x = x + 1;") == Statements([
+        WhileStmt(Binary(Variable('x'), '<', Literal(10)),
+                  ExprStmt(Assign('x', Binary(Variable('x'), '+', Literal(1)))))])
+
+    assert parse("for (var x = 1; x < 10; x = x + 1) print x;") == Statements([
+        Statements([
+            VarDeclaration("x", Literal(1)),
+            WhileStmt(Binary(Variable('x'), '<', Literal(10)), Statements([
+                Print(Variable('x')),
+                ExprStmt(Assign('x', Binary(Variable('x'), '+', Literal(1))))]))
+            ])])
+
+    assert parse("for (;x < 10; x = x + 1) print x;") == Statements([
+            WhileStmt(Binary(Variable('x'), '<', Literal(10)), Statements([
+                Print(Variable('x')),
+                ExprStmt(Assign('x', Binary(Variable('x'), '+', Literal(1))))]))
+            ])
+
+    assert parse("for (;x < 10;) print x;") == Statements([
+            WhileStmt(Binary(Variable('x'), '<', Literal(10)), 
+                      Print(Variable('x')))])
+
+    assert parse("for (;;) print x;") == Statements([
+            WhileStmt(Literal(True), 
+                Print(Variable('x')))])
+
+    assert parse("fun square(x) { return x*x; }") == Statements([
+        FuncDeclaration('square', ['x'], Statements([
+            Return(Binary(Variable('x'), '*', Variable('x')))]))])
+    
 if __name__ == '__main__':
     test_parsing()
     
