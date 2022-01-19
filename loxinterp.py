@@ -56,17 +56,49 @@ class LoxFunction:
             self.interp.env = oldenv
         return result
 
+    def bind(self, instance):
+        env = self.env.new_child()
+        env['this'] = instance
+        return LoxFunction(self.interp, self.parameters, self.statements, env)
+
 class LoxClass:
-    def __init__(self, name, superclass=None):
+    def __init__(self, name, superclass, methods):
         self.name = name
         self.superclass = superclass
+        self.methods = methods
 
     def __str__(self):
         return self.name
 
     def __call__(self, *args):
-        pass
+        this = LoxInstance(self)
+        init = self.find_method('init')
+        if init:
+            init.bind(this)(*args)
+        return this
+
+    def find_method(self, name):
+        return self.methods.get(name)
+
+class LoxInstance:
+    def __init__(self, klass):
+        self.klass = klass
+        self.data = { }
+
+    def __str__(self):
+        return self.klass.name + " instance"
     
+    def get(self, name):
+        if name in self.data:
+            return self.data[name]
+        method = self.klass.find_method(name)
+        if not method:
+            raise RuntimeError(f'Undefined property {name}')
+        return method.bind(self)
+
+    def set(self, name, value):
+        self.data[name] = value
+        
 class LoxInterpreter(NodeVisitor):
     def __init__(self):
         self.env = ChainMap()
@@ -186,7 +218,28 @@ class LoxInterpreter(NodeVisitor):
         raise ReturnException(self.visit(node.value))
 
     def visit_ClassDeclaration(self, node):
-        cls = LoxClass(node.name, None)
+        methods = { }
+        for meth in node.methods:
+            methods[meth.name] = LoxFunction(self, meth.parameters, meth.statements, self.env)
+        cls = LoxClass(node.name, None, methods)
         self.env[node.name] = cls
         
-    
+    def visit_Get(self, node):
+        obj = self.visit(node.object)
+        if isinstance(obj, LoxInstance):
+            return obj.get(node.name)
+        else:
+            raise RuntimeError("Only instances have properties")
+
+    def visit_Set(self, node):
+        obj = self.visit(node.object)
+        val = self.visit(node.value)
+        if isinstance(obj, LoxInstance):
+            obj.set(node.name, val)
+            return val
+        else:
+            raise RuntimeError("Only instances have fields")
+
+    def visit_This(self, node):
+        return self.env.maps[self.localmap[id(node)]]['this']
+        

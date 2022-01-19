@@ -1,0 +1,20 @@
+class Fraction {
+    init(numer, denom) {
+        this.numerator = numer;
+	this.denominator = denom;
+    }
+    add(other) {
+        return Fraction(this.numerator * other.denominator + this.denominator * other.numerator,
+	                this.denominator * other.denominator);
+    }
+    mul(other) {
+        return Fraction(this.numerator * other.numerator,
+	                this.denominator * other.denominator);
+    }
+}
+
+var a = Fraction(2, 3);
+var b = a.add(Fraction(4, 5));
+print b.numerator;
+print b.denominator;
+

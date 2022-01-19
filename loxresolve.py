@@ -39,8 +39,10 @@ def resolve(node, env:ChainMap, localmap:dict):
 
     elif isinstance(node, ClassDeclaration):
         env[node.name] = True
-        # TODO
-        ...
+        new_env = env.new_child()
+        new_env['this'] = True
+        for meth in node.methods:
+            resolve(meth, new_env, localmap)
         
     elif isinstance(node, Literal):
         pass
@@ -74,6 +76,16 @@ def resolve(node, env:ChainMap, localmap:dict):
         newenv = env.new_child()
         for stmt in node.statements:
             resolve(stmt, newenv, localmap)
-        
-    
-        
+
+    elif isinstance(node, Get):
+        resolve(node.object, env, localmap)
+
+    elif isinstance(node, Set):
+        resolve(node.object, env, localmap)
+        resolve(node.value, env, localmap)
+
+    elif isinstance(node, This):
+        if 'this' in env:
+            localmap[id(node)] = _resolve_name('this', env)
+        else:
+            raise RuntimeError("'this' used outside of a class")
