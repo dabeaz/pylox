@@ -112,10 +112,11 @@ class LoxInterpreter(NodeVisitor):
         self.env[node.name] = initializer
 
     def visit_Assign(self, node):
+        value = self.visit(node.value)
         for env in self.env.maps:
             if node.name in env:
-                env[node.name] = self.visit(node.value)
-                break
+                env[node.name] = value
+                return value
         else:
             raise RuntimeError(f'Variable {node.name} not declared')
         

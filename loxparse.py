@@ -8,6 +8,7 @@ class LoxParser(Parser):
     tokens = LoxLexer.tokens
 
     precedence = (
+        ('right', EQUAL),
         ('left', OR),
         ('left', AND),
         ('left', EQUAL_EQUAL, BANG_EQUAL),
@@ -26,41 +27,77 @@ class LoxParser(Parser):
     def declarations(self, p):
         return Statements(p.declaration)
 
-    @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
+    @_('var_declaration')
     def declaration(self, p):
+        return p.var_declaration
+    
+    @_('VAR IDENTIFIER [ EQUAL expression ] SEMI')
+    def var_declaration(self, p):
         return VarDeclaration(p.IDENTIFIER, p.expression)
     
     @_('statement')
     def declaration(self, p):
         return p.statement
 
-    @_('LEFT_BRACE declarations RIGHT_BRACE')
+    @_('statement_block',
+       'expression_statement',
+       'print_statement',
+       'if_statement',
+       'while_statement',
+       'for_statement')
     def statement(self, p):
-        return p.declarations
+        return p[0]
     
+    @_('LEFT_BRACE declarations RIGHT_BRACE')
+    def statement_block(self, p):
+        return p.declarations
+
     @_('expression SEMI')
-    def statement(self, p):
+    def expression_statement(self, p):
         return ExpressionStmt(p.expression)
     
     @_('PRINT expression SEMI')
-    def statement(self, p):
+    def print_statement(self, p):
         return Print(p.expression)
 
-    @_('IDENTIFIER EQUAL expression SEMI')
-    def statement(self, p):
-        return Assign(p.IDENTIFIER, p.expression)
 
     @_('IF LEFT_PAREN expression RIGHT_PAREN statement [ ELSE statement ]')
-    def statement(self, p):
+    def if_statement(self, p):
         return IfStmt(p.expression, p.statement0, p.statement1)
 
     @_('WHILE LEFT_PAREN expression RIGHT_PAREN statement')
-    def statement(self, p):
+    def while_statement(self, p):
         return WhileStmt(p.expression, p.statement)
+
+    @_('FOR LEFT_PAREN for_initializer [ expression ] SEMI [ expression ] RIGHT_PAREN statement')
+    def for_statement(self, p):
+        body = p.statement
+        if p.expression1:
+            body.statements.append(p.expression1)
+        body = WhileStmt(p.expression0, body)
+        body = Statements([p.for_initializer, body])
+        return body
+
+    @_('FOR LEFT_PAREN SEMI [ expression ] SEMI [ expression ] RIGHT_PAREN statement')
+    def for_statement(self, p):
+        body = p.statement
+        if p.expression1:
+            body.statements.append(p.expression1)
+        body = WhileStmt(p.expression0, body)
+        return body
     
+    @_('var_declaration',
+       'expression_statement')
+    def for_initializer(self, p):
+        return p[0]
+
+    @_('IDENTIFIER EQUAL expression')
+    def expression(self, p):
+        return Assign(p.IDENTIFIER, p.expression)
+                
     @_('expression OR expression',
        'expression AND expression',
-       )
+    )
     def expression(self, p):
         return Logical(p.expression0, p[1], p.expression1)
     

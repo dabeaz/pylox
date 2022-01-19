@@ -45,6 +45,11 @@ class Grouping(Expression):
 class Variable(Expression):
     def __init__(self, name):
         self.name = name
+
+class Assign(Expression):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
         
 class Statement(Node):
     pass
@@ -72,11 +77,6 @@ class WhileStmt(Statement):
     def __init__(self, test, body):
         self.test = test
         self.body = body
-        
-class Assign(Statement):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
 
 class Statements(Statement):
     def __init__(self, statements):
