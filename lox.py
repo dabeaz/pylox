@@ -23,13 +23,15 @@ def main(argv):
         ast = parser.parse(lexer.tokenize(source))
         print(loxast.ASTPrinter().visit(ast))
         print("::: Running :::")
-        interp.visit(ast)
+        interp.interpret(ast)
     else:
         try:
             while True:
                 source = input("Lox > ")
                 ast = parser.parse(lexer.tokenize(source))
-                interp.visit(ast)
+                # Strip away the outer Statements block so we keep global scope
+                for stmt in ast.statements:
+                    interp.interpret(stmt)
         except EOFError:
             pass
 

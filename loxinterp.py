@@ -4,6 +4,7 @@
 
 from collections import ChainMap
 from loxast import NodeVisitor
+import loxresolve
 
 # Lox truthiness.  See pg. 101. 
 def _is_truthy(value):
@@ -58,6 +59,12 @@ class LoxFunction:
 class LoxInterpreter(NodeVisitor):
     def __init__(self):
         self.env = ChainMap()
+        self.localmap = { }
+
+    # High-level entry point
+    def interpret(self, node):
+        loxresolve.resolve(node, self.env, self.localmap)
+        self.visit(node)
         
     def visit_Statements(self, node):
         self.env = self.env.new_child()
@@ -122,10 +129,7 @@ class LoxInterpreter(NodeVisitor):
         return self.visit(node.value)
 
     def visit_Variable(self, node):
-        if node.name in self.env:
-            return self.env[node.name]
-        else:
-            raise RuntimeError(f'Variable {node.name} not defined')
+        return self.env.maps[self.localmap[id(node)]][node.name]
         
     def visit_Call(self, node):
         callee = self.visit(node.func)
@@ -139,7 +143,7 @@ class LoxInterpreter(NodeVisitor):
         print(self.visit(node.value))
 
     def visit_ExprStmt(self, node):
-        self.visit(node.expr)
+        self.visit(node.value)
         
     def visit_VarDeclaration(self, node):
         if node.initializer:
@@ -154,12 +158,7 @@ class LoxInterpreter(NodeVisitor):
         
     def visit_Assign(self, node):
         value = self.visit(node.value)
-        for env in self.env.maps:
-            if node.name in env:
-                env[node.name] = value
-                return value
-        else:
-            raise RuntimeError(f'Variable {node.name} not declared')
+        self.env.maps[self.localmap[id(node)]][node.name] = value
         
     def visit_IfStmt(self, node):
         test = self.visit(node.test)
@@ -174,4 +173,5 @@ class LoxInterpreter(NodeVisitor):
 
     def visit_Return(self, node):
         raise ReturnException(self.visit(node.value))
+
     

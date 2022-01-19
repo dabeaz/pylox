@@ -56,7 +56,7 @@ class Print(Statement):
     _fields = ['value']
 
 class ExprStmt(Statement):
-    _fields = ['expr']
+    _fields = ['value']
         
 class IfStmt(Statement):
     _fields = ['test', 'consequence', 'alternative']
@@ -101,7 +101,7 @@ class ASTPrinter(NodeVisitor):
         return f'(print {self.visit(node.value)})'
 
     def visit_ExprStmt(self, node):
-        return f'(exprstmt {self.visit(node.expr)})'
+        return f'(exprstmt {self.visit(node.value)})'
 
     def visit_VarDeclaration(self, node):
         return f'(var {node.name} {self.visit(node.initializer)})' if node.initializer else f'(var {node.name})'
