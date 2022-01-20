@@ -38,7 +38,6 @@ class LoxContext:
     def error(self, position, message):
         if isinstance(position, loxast.Node):
             lineno = self.parser.line_position(position)
-            print(f'{lineno}: {message}')
             (start, end) = (part_start, part_end) = self.parser.index_position(position)
             while start >= 0 and self.source[start] != '\n':
                 start -=1
@@ -50,6 +49,7 @@ class LoxContext:
             print(self.source[start:end])
             print(" "*(part_start - start), end='')
             print("^"*(part_end - part_start))
+            print(f'{lineno}: {message}')
             
         else:
             print(f'{position}: {message}')
