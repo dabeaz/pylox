@@ -4,34 +4,27 @@
 
 import sys
 
-import loxscan
-import loxparse
-import loxast
-import loxinterp
+import loxcontext
 
 def main(argv):
     if len(argv) > 2:
         raise SystemExit(f'Usage: lox.py filename')
 
-    lexer = loxscan.LoxLexer()
-    parser = loxparse.LoxParser()
-    interp = loxinterp.LoxInterpreter()
-    
+    context = loxcontext.LoxContext()
     if len(sys.argv) == 2:
         with open(argv[1]) as file:
             source = file.read()
-        ast = parser.parse(lexer.tokenize(source))
-        print(loxast.ASTPrinter().visit(ast))
-        print("::: Running :::")
-        interp.interpret(ast)
+        context.parse(source)
+        context.run()
     else:
         try:
             while True:
                 source = input("Lox > ")
-                ast = parser.parse(lexer.tokenize(source))
-                # Strip away the outer Statements block so we keep global scope
-                for stmt in ast.statements:
-                    interp.interpret(stmt)
+                context.parse(source)
+                if not context.have_errors:
+                    for stmt in context.ast.statements:
+                        context.ast = stmt
+                        context.run()
         except EOFError:
             pass
 

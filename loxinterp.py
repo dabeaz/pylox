@@ -15,51 +15,46 @@ def _is_truthy(value):
     else:
         return True
 
-def _check_numeric_operands(op, left, right):
-    if isinstance(left, float) and isinstance(right, float):
-        return True
-    else:
-        raise RuntimeError(f"{op} operands must be numbers")
-
-def _check_numeric_operand(op, value):
-    if isinstance(value, float):
-        return True
-    else:
-        raise RuntimeError(f"{op} operand must be a number")
-
 class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
-        
+
+class LoxExit(BaseException):
+    pass
+
+class LoxCallError(Exception):
+    pass
+
+class LoxAttributeError(Exception):
+    pass
+
 class LoxFunction:
-    def __init__(self, interp, parameters, statements, env):
-        self.interp = interp
-        self.parameters = parameters
-        self.statements = statements
+    def __init__(self, node, env):
+        self.node = node
         self.env = env
 
-    def __call__(self, *args):
-        if len(args) != len(self.parameters):
-            raise RuntimeError("Wrong # arguments")
+    def __call__(self, interp, *args):
+        if len(args) != len(self.node.parameters):
+            raise LoxCallError(f"Expected {len(self.node.parameters)} arguments")
         newenv = self.env.new_child()
-        for name, arg in zip(self.parameters, args):
+        for name, arg in zip(self.node.parameters, args):
             newenv[name] = arg
 
-        oldenv = self.interp.env
-        self.interp.env = newenv
+        oldenv = interp.env
+        interp.env = newenv
         try:
-            self.interp.visit(self.statements)
+            interp.visit(self.node.statements)
             result = None
         except ReturnException as e:
             result = e.value
         finally:
-            self.interp.env = oldenv
+            interp.env = oldenv
         return result
 
     def bind(self, instance):
         env = self.env.new_child()
         env['this'] = instance
-        return LoxFunction(self.interp, self.parameters, self.statements, env)
+        return LoxFunction(self.node, env)
 
 class LoxClass:
     def __init__(self, name, superclass, methods):
@@ -96,21 +91,43 @@ class LoxInstance:
             return self.data[name]
         method = self.klass.find_method(name)
         if not method:
-            raise RuntimeError(f'Undefined property {name}')
+            raise LoxAttributeError(f'Undefined property {name}')
         return method.bind(self)
 
     def set(self, name, value):
         self.data[name] = value
         
 class LoxInterpreter(NodeVisitor):
-    def __init__(self):
+    def __init__(self, context):
+        self.context = context
         self.env = ChainMap()
+        self.resolve_env = ChainMap()
         self.localmap = { }
 
+    def error(self, position, message):
+        self.context.error(position, message)
+        raise LoxExit()
+    
+    def _check_numeric_operands(self, node, left, right):
+        if isinstance(left, float) and isinstance(right, float):
+            return True
+        else:
+            self.error(node, f"{node.op} operands must be numbers")
+
+    def _check_numeric_operand(self, node, value):
+        if isinstance(value, float):
+            return True
+        else:
+            self.error(node, f"{node.op} operand must be a number")
+        
     # High-level entry point
     def interpret(self, node):
-        loxresolve.resolve(node, self.env, self.localmap)
-        self.visit(node)
+        try:
+            loxresolve.resolve(node, self.resolve_env, self)
+            if not self.context.have_errors:
+                self.visit(node)
+        except LoxExit as e:
+            pass
         
     def visit_Statements(self, node):
         self.env = self.env.new_child()
@@ -125,30 +142,30 @@ class LoxInterpreter(NodeVisitor):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if node.op == '+':
-            (isinstance(left, str) and isinstance(right, str)) or _check_numeric_operands(node.op, left, right)
+            (isinstance(left, str) and isinstance(right, str)) or self._check_numeric_operands(node, left, right)
             return left + right
         elif node.op == '-':
-            _check_numeric_operands(node.op, left, right)
+            self._check_numeric_operands(node, left, right)
             return left - right
         elif node.op == '*':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left * right
         elif node.op == '/':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left / right
         elif node.op == '==':
             return left == right
         elif node.op == '<':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left < right
         elif node.op == '>':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left > right
         elif node.op == '<=':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left <= right
         elif node.op == '>=':
-            _check_numeric_operands(node.op, left, right)            
+            self._check_numeric_operands(node, left, right)            
             return left >= right
         else:
             raise NotImplementedError(f"Bad operator {node.op}")
@@ -164,7 +181,7 @@ class LoxInterpreter(NodeVisitor):
     def visit_Unary(self, node):
         operand = self.visit(node.operand)
         if node.op == "-":
-            _check_numeric_operand(node.op, operand)
+            self._check_numeric_operand(node, operand)
             return -operand
         elif node.op == "!":
             return not _is_truthy(operand)
@@ -180,10 +197,13 @@ class LoxInterpreter(NodeVisitor):
     def visit_Call(self, node):
         callee = self.visit(node.func)
         if not callable(callee):
-            raise RuntimeError(f'{callee} is not callable')
+            self.error(node.func, f'{self.context.find_source(node.func)!r} is not callable')
         
         args = [ self.visit(arg) for arg in node.arguments ]
-        return callee(*args)
+        try:
+            return callee(self, *args)
+        except LoxCallError as err:
+            self.error(node.func, str(err))
         
     def visit_Print(self, node):
         print(self.visit(node.value))
@@ -199,7 +219,7 @@ class LoxInterpreter(NodeVisitor):
         self.env[node.name] = initializer
 
     def visit_FuncDeclaration(self, node):
-        func = LoxFunction(self, node.parameters, node.statements, self.env)
+        func = LoxFunction(node, self.env)
         self.env[node.name] = func
         
     def visit_Assign(self, node):
@@ -230,16 +250,19 @@ class LoxInterpreter(NodeVisitor):
             env = self.env
         methods = { }
         for meth in node.methods:
-            methods[meth.name] = LoxFunction(self, meth.parameters, meth.statements, env)
+            methods[meth.name] = LoxFunction(meth, env)
         cls = LoxClass(node.name, superclass, methods)
         self.env[node.name] = cls
         
     def visit_Get(self, node):
         obj = self.visit(node.object)
         if isinstance(obj, LoxInstance):
-            return obj.get(node.name)
+            try:
+                return obj.get(node.name)
+            except LoxAttributeError as err:
+                self.error(node.object, str(err))
         else:
-            raise RuntimeError("Only instances have properties")
+            self.error(node.object, f'{self.context.find_source(node.object)!r} is not an instance')
 
     def visit_Set(self, node):
         obj = self.visit(node.object)
@@ -248,7 +271,7 @@ class LoxInterpreter(NodeVisitor):
             obj.set(node.name, val)
             return val
         else:
-            raise RuntimeError("Only instances have fields")
+            self.error(node.object, f'{self.context.find_source(node.object)!r} is not an instance')
 
     def visit_This(self, node):
         return self.env.maps[self.localmap[id(node)]]['this']
@@ -259,5 +282,5 @@ class LoxInterpreter(NodeVisitor):
         this = self.env.maps[distance-1]['this']
         method = superclass.find_method(node.name)
         if not method:
-            raise RuntimeError(f"Undefined property {node.name!r}")
+            self.error(node.object, f'Undefined property {node.name!r}')
         return method.bind(this)

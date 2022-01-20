@@ -6,7 +6,7 @@ from loxscan import LoxLexer
 
 class LoxParser(Parser):
     tokens = LoxLexer.tokens
-
+    expected_shift_reduce = 1
     precedence = (
         ('right', EQUAL),
         ('left', OR),
@@ -17,7 +17,7 @@ class LoxParser(Parser):
         ('left', STAR, SLASH),
         ('right', UNARY),
         )
-
+    
     @_('declarations')
     def program(self, p):
         return p.declarations
@@ -128,7 +128,10 @@ class LoxParser(Parser):
         elif isinstance(p.expression0, Get):
             return Set(p.expression0.object, p.expression0.name, p.expression1)
         else:
-            raise SyntaxError(f"Can't assign to {p.expression0}")
+            if self.context:
+                self.context.error(p.lineno, f"Can't assign to {self.context.find_source(p.expression0)!r}")
+            else:
+                print(p.lineno, f"Can't assign to {p.expression0}")
                 
     @_('expression OR expression',
        'expression AND expression',
@@ -206,9 +209,21 @@ class LoxParser(Parser):
     def arguments(self, p):
         return [ p.expression0 ] + p.expression1
 
+    def error(self, p):
+        lineno = p.lineno if p else 'EOF'
+        value = repr(p.value) if p else 'EOF'
+        if self.context:
+            self.context.error(lineno, f'Syntax error at {value}')
+        else:
+            print(f'{lineno}: Syntax error at {value}')
+            
+    # --- Initialization
+    def __init__(self, context):
+        self.context = context
+
 def test_parsing():
-    lexer = LoxLexer()
-    parser = LoxParser()
+    lexer = LoxLexer(None)
+    parser = LoxParser(None)
 
     def parse(source):
         return parser.parse(lexer.tokenize(source))

@@ -72,11 +72,17 @@ class LoxLexer(Lexer):
     IDENTIFIER['while'] = WHILE
 
     def error(self, t):
-        print(f'{self.lineno}: Illegal character {t.value[0]!r}')
+        if self.context:
+            self.context.error(self.lineno, f'Illegal character {t.value[0]!r}')
+        else:
+            print(f'{self.lineno}: Illegal character {t.value[0]!r}')
         self.index += 1
 
+    def __init__(self, context):
+        self.context = context
+        
 def test_scanner():
-    lexer = LoxLexer()
+    lexer = LoxLexer(None)
     tokens = lexer.tokenize("""( ) { } , . - + * = ==
                             // This is a comment
                             / ; ! != < <= > >=""")
